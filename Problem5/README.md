@@ -12,7 +12,7 @@ To run the application move to *Problem5* directory ```cd Problem5``` and run ne
 
 ```shell
 npm install
-npm build
+npm run build
 npm start
 ```
 
@@ -21,4 +21,10 @@ If you want to run application in development just run:
 ```shell
 npm install
 npm run dev
+```
+
+You may have to install typescript:
+
+```shell
+npm install typescript
 ```

@@ -1,5 +1,4 @@
 import { NextFunction, Request, Response } from 'express';
-import Database from 'better-sqlite3';
 import {
   GetItemDetailsParams,
   GetItemDetailsResponse,
@@ -10,29 +9,17 @@ import {
   PutItemReq,
   PutItemRes,
 } from './types';
-
-const db = new Database('resource.db');
+import ItemManager from '../managers/item.manager';
 
 export const getItems = async (
   req: Request<never, never, never, GetItemsQuery>,
   res: Response<GetItemsResponse>,
   next: NextFunction,
 ): Promise<void> => {
-  const { id, name } = req.query;
-
-  const params = [];
-  let query = 'SELECT id, name from items WHERE 1=1';
-  if (id) {
-    query += ' AND id = ?';
-    params.push(id);
-  }
-  if (name) {
-    query += ' AND name LIKE ?';
-    params.push(`%${name}%`);
-  }
+  const filters = req.query;
 
   try {
-    const items = db.prepare(query).all(...params) as GetItemsResponse;
+    const items = await ItemManager.fetchItems(filters);
     res.status(200).send(items);
     return;
   } catch (err: any) {
@@ -48,9 +35,7 @@ export const getItemDetails = async (
 ): Promise<void> => {
   const { id } = req.params;
   try {
-    const item = db
-      .prepare('SELECT * from items WHERE id = ?')
-      .get(id) as GetItemDetailsResponse;
+    const item = await ItemManager.fetchOne(Number(id));
 
     if (item) {
       res.status(200).send(item);
@@ -70,13 +55,9 @@ export const postCreateItem = async (
   res: Response<IItem>,
   next: NextFunction,
 ): Promise<void> => {
-  const { details, name } = req.body;
-
   try {
-    const item = db
-      .prepare('INSERT INTO items (name, details) VALUES (?, ?)')
-      .run(name, details);
-    res.status(201).send({ id: Number(item.lastInsertRowid), name, details });
+    const item = await ItemManager.createItem(req.body);
+    res.status(201).send(item);
     return;
   } catch (err: any) {
     next(err);
@@ -92,22 +73,16 @@ export const putUpdateItem = async (
   const { id } = req.params;
   const updateData = req.body;
 
-  const itemToPut = db
-    .prepare('SELECT * FROM items WHERE id = ?')
-    .get(id) as IItem;
+  const itemToPut = ItemManager.fetchOne(Number(id));
   if (!itemToPut) {
     res.status(404).send();
   }
 
   try {
-    db.prepare('UPDATE items SET name = ?, details = ? WHERE id = ?').run(
-      updateData.name,
-      updateData.details,
-      id,
-    );
-    const updated = db
-      .prepare('SELECT * FROM items WHERE id = ?')
-      .get(id) as IItem;
+    const updated = await ItemManager.updateItem({
+      id: Number(id),
+      ...updateData,
+    });
     res.status(200).send(updated);
     return;
   } catch (err: any) {
@@ -123,14 +98,12 @@ export const deleteItem = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    const itemToDel = db
-      .prepare('SELECT * FROM items WHERE id = ?')
-      .get(id) as IItem;
+    const itemToDel = ItemManager.fetchOne(Number(id));
     if (!itemToDel) {
       res.status(404).send();
       return;
     }
-    db.prepare('DELETE FROM items WHERE id = ?').run(id);
+    await ItemManager.deleteItem(Number(id));
     res.sendStatus(204);
     return;
   } catch (err: any) {

@@ -5,23 +5,21 @@ export interface IItem {
 }
 
 export interface GetItemsQuery {
-  id?: string;
+  id?: number;
   name?: string;
 }
 
-export type GetItemsResponse = IItem[];
+export type GetItemsResponse = Omit<IItem, 'details'>[];
 
 export type GetItemDetailsParams = { id: string };
 
-export type GetItemDetailsResponse = IItem[];
+export type GetItemDetailsResponse = IItem;
 
 export interface PostCreateItemReq {
   name: string;
   details: string;
 }
 
-export interface PutItemReq extends Partial<IItem> {
-  id: number;
-}
+export interface PutItemReq extends Partial<IItem> {}
 
 export type PutItemRes = IItem;
